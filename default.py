@@ -119,7 +119,7 @@ elif mode[0] == '4':
         start = datetime.datetime.strptime(scheduled_start, format)
     except TypeError:
         start = datetime.datetime(*(time.strptime(scheduled_start, format)[0:6]))
-        
+    start= start-datetime.timedelta(0,0,0,0,0,1) #start the stream one hour before the game begins
     if now < start:
         xbmcgui.Dialog().ok(_addon_name, __language__(30004), "", args['scheduled_start'][0])
     else:

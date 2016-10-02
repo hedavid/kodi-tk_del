@@ -87,16 +87,21 @@ mode = args.get('mode', None)
 # main menu, showing 'mediatypes'
 if mode is None:
     # load menu
+
     response = urllib.urlopen("https://www.telekomeishockey.de/feeds/appfeed.php?type=videolist").read()
     jsonResult = json.loads(response)
 
     for mediatype in jsonResult['mediatypes']:
-        if mediatype['title'].upper() in ['LIVE', 'VEREINSUPLOAD']:
-            url = build_url({'mode': '2', 'mediatype_id': mediatype['id']})
-        else:
-            url = build_url({'mode': '1', 'mediatype_id': mediatype['id']})
-        li = xbmcgui.ListItem(mediatype['title'].title(), iconImage='DefaultFolder.png')
-        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+        items = urllib.urlopen("https://www.telekomeishockey.de/feeds/appfeed.php?type=videolist&mediatype="+str(mediatype['id'])).read()
+        jsonResultItems = json.loads(items)
+        if jsonResultItems['total_items']>0:
+        # don't show empty categories
+            if mediatype['title'].upper() in ['LIVE', 'VEREINSUPLOAD']:
+                url = build_url({'mode': '2', 'mediatype_id': mediatype['id']})
+            else:
+                url = build_url({'mode': '1', 'mediatype_id': mediatype['id']})
+            li = xbmcgui.ListItem(mediatype['title'].title()+" ("+str(jsonResultItems['total_items'])+")", iconImage='DefaultFolder.png')
+            xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
     xbmcplugin.addDirectoryItem(handle=_addon_handler, url=build_url({'mode': '5'}), listitem=xbmcgui.ListItem('Wiederholungen nach Mannschaften', iconImage='DefaultFolder.png'), isFolder=True)
     xbmcplugin.addDirectoryItem(handle=_addon_handler, url=build_url({'mode': '6'}), listitem=xbmcgui.ListItem('Zusammenfassungen nach Mannschaften', iconImage='DefaultFolder.png'), isFolder=True)

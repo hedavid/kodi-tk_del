@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright (C) 2014 hubsif (hubsif@gmx.de)
 #
 # This program is free software; you can redistribute it and/or modify it under the terms 
@@ -35,6 +37,7 @@ import mechanize
 # don't know if that's needed, as it is already defined in addon.xml
 xbmcplugin.setContent(_addon_handler, 'videos')
 
+Mannschaften=[["Augsburger Panther","AUG"],['Eisbären Berlin',"EBB"],["Pinguins Bremerhaven","BHV"],["Düsseldorfer EG","DEG"],["ERC Ingolstadt","ING"],["Iserlohn Roosters","IEC"],["Krefeld Pinguine","KEV"],["Kölner Haie","KEC"],["Adler Mannheim","MAN"],["EHC Red Bull München","MUC"],["Thomas Sabo Ice Tigers","NIT"],["Schwenninger Wild Wings","SWW"],["Straubing Tigers","STR"],["Grizzlys Wolfsburg","WOB"]]
 
 ###########
 # functions
@@ -88,13 +91,15 @@ if mode is None:
     jsonResult = json.loads(response)
 
     for mediatype in jsonResult['mediatypes']:
-        if mediatype['title'].upper() in ['LIVE', 'VEREINSUPLOAD']:
+        if mediatype['title'].title() in ['LIVE', 'VEREINSUPLOAD']:
             url = build_url({'mode': '2', 'mediatype_id': mediatype['id']})
         else:
             url = build_url({'mode': '1', 'mediatype_id': mediatype['id']})
-        li = xbmcgui.ListItem(mediatype['title'].upper(), iconImage='DefaultFolder.png')
+        li = xbmcgui.ListItem(mediatype['title'].title(), iconImage='DefaultFolder.png')
         xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
 
+    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=build_url({'mode': '5'}), listitem=xbmcgui.ListItem('Wiederholungen nach Mannschaften', iconImage='DefaultFolder.png'), isFolder=True)
+    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=build_url({'mode': '6'}), listitem=xbmcgui.ListItem('Zusammenfassungen nach Mannschaften', iconImage='DefaultFolder.png'), isFolder=True)
     xbmcplugin.endOfDirectory(_addon_handler)
 
 # submenu, showing 'round'
@@ -122,21 +127,35 @@ elif mode[0] == '1':
     xbmcplugin.endOfDirectory(_addon_handler)
 
 # submenu, showing video items
-elif mode[0] == '2':
+elif mode[0] == '2' or mode[0]=='8':
     page = 1
+    format = '%Y-%m-%d %H:%M:%S'
+    now = datetime.datetime.now()
 
     while True:
         response = urllib.urlopen("https://www.telekomeishockey.de/feeds/appfeed.php?type=videolist&mediatype="+args['mediatype_id'][0]+"&page="+str(page)).read()
         jsonResult = json.loads(response)
-
         for content in jsonResult['content']:
+            try:
+                start = datetime.datetime.strptime(content['scheduled_start'], format)
+            except TypeError:
+                start = datetime.datetime(*(time.strptime(content['scheduled_start'], format)[0:6]))
+            if start.strftime("%d.%m.%y")==now.strftime("%d.%m.%y"):
+                Startzeit=start.strftime("%H:%M")
+            else:
+                Startzeit=start.strftime("%d.%m. %H:%M")
             if not 'round' in args or args['round'][0] == content['round_1'] + " - " + content['round_2']:
                 url = build_url({'mode': '4', 'id': content['id'], 'scheduled_start': content['scheduled_start'], 'isPay': content['isPay'], 'thumbnailImage': 'https://www.telekomeishockey.de' + content['teaser_image_small']})
-                li = xbmcgui.ListItem(content['title_long'].split('|')[0], iconImage='https://www.telekomeishockey.de' + content['teaser_image_small'])
+                li = xbmcgui.ListItem(content['title_long'].split('|')[0]+' ('+Startzeit+')', iconImage='https://www.telekomeishockey.de' + content['teaser_image_small'])
+                info = {'plot':'Spiel '+content['title_long']+' ('+content['round_1']+': '+content['round_2']+')','date':content['scheduled_start'],}
+                li.setInfo('video',info)
                 li.setProperty('fanart_image', 'https://www.telekomeishockey.de' + content['teaser_image_big'])
                 li.setProperty('IsPlayable', 'true')
-                xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
-
+                #xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+                if mode[0]=='8' and (content["team_a_title_short"]==args['team'][0] or content["team_b_title_short"]==args['team'][0]):
+                    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
+                elif mode[0]!='8':
+                    xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li)
         if page < jsonResult['total_pages']:
             page += 1
         else:
@@ -189,3 +208,15 @@ elif mode[0] == '4':
         
         listitem = xbmcgui.ListItem(path=playlisturl + "?hdnea=" + auth, thumbnailImage=args['thumbnailImage'][0])
         xbmcplugin.setResolvedUrl(_addon_handler, True, listitem)
+
+# Reports and Re-Live per team
+elif mode[0] == '5' or mode[0] == '6':
+    menuitems = set()
+    for team in Mannschaften:
+        if mode[0]=='5':
+            url = build_url({'mode': '8', 'mediatype_id':'3','team': team[1]})
+        else:
+            url = build_url({'mode': '8', 'mediatype_id':'5','team': team[1]})
+        li = xbmcgui.ListItem(team[0].decode("utf-8"), iconImage='https://www.telekomeishockey.de/assets/img/teams/teamR_'+team[1]+'.png')
+        xbmcplugin.addDirectoryItem(handle=_addon_handler, url=url, listitem=li, isFolder=True)
+    xbmcplugin.endOfDirectory(_addon_handler)

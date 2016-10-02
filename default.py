@@ -91,7 +91,7 @@ if mode is None:
     jsonResult = json.loads(response)
 
     for mediatype in jsonResult['mediatypes']:
-        if mediatype['title'].title() in ['LIVE', 'VEREINSUPLOAD']:
+        if mediatype['title'].upper() in ['LIVE', 'VEREINSUPLOAD']:
             url = build_url({'mode': '2', 'mediatype_id': mediatype['id']})
         else:
             url = build_url({'mode': '1', 'mediatype_id': mediatype['id']})

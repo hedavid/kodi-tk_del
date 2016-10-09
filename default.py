@@ -178,8 +178,8 @@ elif mode[0] == '4':
     except TypeError:
         start = datetime.datetime(*(time.strptime(scheduled_start, format)[0:6]))
 
-    # 'scheduled_start' reflects beginning of game, stream starts 15 minutes earlier
-    start = start - datetime.timedelta(minutes=15)
+    # 'scheduled_start' reflects beginning of game, stream starts 60 minutes earlier
+    start = start - datetime.timedelta(minutes=60)
 
     if now < start:
         xbmcgui.Dialog().ok(_addon_name, __language__(30004), "", str(start))
